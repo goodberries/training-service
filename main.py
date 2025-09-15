@@ -28,9 +28,16 @@ def get_negative_feedback_interactions(engine):
 
 def generate_improved_answer(query, llm):
     """Generates a high-quality answer for a given query using the teacher LLM."""
-    prompt = f"A user was unsatisfied with a previous answer to the following question. Please provide a comprehensive and correct answer. User Question: {query}"
+    # Add context to guide the teacher LLM to act as a Flipkart agent
+    context_prompt = (
+        "You are an expert customer support agent for Flipkart, an e-commerce company. "
+        "Your goal is to provide a clear, helpful, and factually correct answer based on company policy. "
+        "A user was unsatisfied with a previous answer to the following question. "
+        "Please provide the ideal, comprehensive, and correct answer that a Flipkart agent should give.\n\n"
+        f"User Question: {query}"
+    )
     try:
-        response = llm.invoke(prompt)
+        response = llm.invoke(context_prompt)
         return response.content
     except Exception as e:
         print(f"Error generating improved answer for query '{query}': {e}")
