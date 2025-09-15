@@ -18,7 +18,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: postgres-secret
-                  key: database_url
+                  key: DATABASE_URL
             - name: AWS_REGION
               value: "us-east-1"
             - name: PINECONE_API_KEY
