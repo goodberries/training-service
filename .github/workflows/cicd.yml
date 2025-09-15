@@ -1,4 +1,4 @@
-name: CI for Training Service
+name: CI/CD for Training Service
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
 
 env:
   DOCKER_IMAGE_NAME: training-service
+  K8S_CRONJOB_NAME: self-healing-cronjob
 
 jobs:
   build-and-push:
@@ -28,6 +29,14 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
+
+  deploy:
+    name: Deploy to Kubernetes
+    needs: build-and-push
+    runs-on: self-hosted
+    steps:
+      - name: Deploy CronJob Update
+        run: |
+          kubectl set image cronjob/${{ env.K8S_CRONJOB_NAME }} ${{ env.DOCKER_IMAGE_NAME }}=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
+          echo "CronJob image updated successfully!"
