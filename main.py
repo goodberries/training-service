@@ -10,7 +10,8 @@ from langchain_pinecone import Pinecone
 # --- Configuration ---
 DATABASE_URL = os.getenv("DATABASE_URL")
 FEEDBACK_THRESHOLD = int(os.getenv("FEEDBACK_THRESHOLD", 5))
-TEACHER_LLM_MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0" # Using Sonnet as the 'teacher'
+TEACHER_LLM_MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0"  # Using Sonnet as the 'teacher'
+JUDGE_LLM_MODEL_ID = "anthropic.claude-3-haiku-20240307-v1:0"  # Fast judge for relevance checks
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_INDEX_NAME = "rag-index"
@@ -25,6 +26,28 @@ def get_negative_feedback_interactions(engine):
         """)
         result = connection.execute(query)
         return result.fetchall()
+
+def has_sufficient_existing_answer(vector_store, judge_llm, query, k=3):
+    """Checks if existing KB sufficiently answers the query using similarity + LLM judge."""
+    try:
+        docs = vector_store.similarity_search(query, k=k)
+    except Exception as e:
+        print(f"Similarity search failed: {e}")
+        return False
+    if not docs:
+        return False
+    context = "\n\n".join([f"Doc {i+1}:\n{d.page_content}" for i, d in enumerate(docs)])
+    judge_prompt = (
+        "You are validating if the provided context already contains an adequate answer for the user's question in the Flipkart support domain. "
+        "Answer strictly with 'yes' or 'no'.\n\n"
+        f"Question: {query}\n\nContext:\n{context}\n\nDoes the context adequately answer the question?"
+    )
+    try:
+        verdict = judge_llm.invoke(judge_prompt).content.strip().lower()
+        return verdict.startswith('y')
+    except Exception as e:
+        print(f"LLM judge failed: {e}")
+        return False
 
 def generate_improved_answer(query, llm):
     """Generates a high-quality answer for a given query using the teacher LLM."""
@@ -68,6 +91,7 @@ def main():
     engine = create_engine(DATABASE_URL)
     bedrock_client = boto3.client("bedrock-runtime", region_name=AWS_REGION)
     teacher_llm = BedrockChat(client=bedrock_client, model_id=TEACHER_LLM_MODEL_ID)
+    judge_llm = BedrockChat(client=bedrock_client, model_id=JUDGE_LLM_MODEL_ID)
     embeddings = BedrockEmbeddings(client=bedrock_client)
     vector_store = Pinecone.from_existing_index(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
 
@@ -85,6 +109,12 @@ def main():
     for interaction in interactions:
         interaction_id, user_query = interaction
         print(f"Processing interaction {interaction_id} for query: '{user_query}'")
+
+        # 3a. Check if existing KB already has a sufficient answer
+        if has_sufficient_existing_answer(vector_store, judge_llm, user_query, k=3):
+            print("Existing knowledge is sufficient. Skipping generation and marking as processed.")
+            mark_interaction_as_processed(engine, interaction_id)
+            continue
 
         # 4. Generate improved answer
         improved_answer = generate_improved_answer(user_query, teacher_llm)
