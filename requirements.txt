@@ -1,0 +1,8 @@
+sqlalchemy
+psycopg2-binary
+boto3
+langchain-aws
+langchain-community
+langchain-pinecone
+pinecone-client>=3.0.0
+python-dotenv

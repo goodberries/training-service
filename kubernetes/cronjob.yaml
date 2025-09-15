@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: self-healing-cronjob
+spec:
+  # Run every day at midnight UTC
+  schedule: "0 0 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: training-service
+            image: yashwanthydg/training-service:v1 # <-- IMPORTANT: Change this
+            imagePullPolicy: IfNotPresent
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: database_url
+            - name: AWS_REGION
+              value: "us-east-1"
+            - name: PINECONE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: pinecone-credentials
+                  key: api_key
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: aws_access_key_id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: aws_secret_access_key
+            - name: FEEDBACK_THRESHOLD
+              value: "5" # Trigger job if 5 or more bad interactions are found
+          restartPolicy: OnFailure
