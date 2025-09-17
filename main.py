@@ -6,7 +6,7 @@ from langchain_community.chat_models import BedrockChat
 from langchain_pinecone import Pinecone
 import httpx
 
-# --- Configuration ---
+# --- Configuration --- //test
 INTERACTIONS_SERVICE_URL = os.getenv("INTERACTIONS_SERVICE_URL", "http://interactions-service:8003")
 FEEDBACK_THRESHOLD = int(os.getenv("FEEDBACK_THRESHOLD", 5))
 TEACHER_LLM_MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0"
