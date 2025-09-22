@@ -35,7 +35,7 @@ jobs:
         # ADDED: This step updates the image tag in your deployment file.
         # Assumes your file is located at 'kubernetes/deployment.yaml'.
         run: |
-          sed -i "s|image: .*|image: yashwanthydg/training-service:${{ github.sha }}|g" kubernetes/manifest.yaml
+          sed -i "s|image: .*|image: yashwanthydg/training-service:${{ github.sha }}|g" kubernetes/cronjob.yaml
   
       - name: Commit and push manifest changes
         # ADDED: This step commits the updated manifest file back to your main branch.
