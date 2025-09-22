@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: self-healing-cronjob
+  name: self-healing-cronjob #test
 spec:
   # Run every day at midnight UTC
   schedule: "0 0 * * *"
